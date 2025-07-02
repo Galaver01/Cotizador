@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plataforma de Cotizaciones</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+        }
+        .view {
+            display: none;
+        }
+        .view.active {
+            display: block;
+        }
+        .sidebar-link {
+            transition: all 0.2s ease-in-out;
+        }
+        .sidebar-link:hover, .sidebar-link.active {
+            background-color: #374151;
+            color: #ffffff;
+            transform: translateX(4px);
+        }
+        .btn {
+            transition: background-color 0.2s ease-in-out;
+        }
+        .modal-overlay {
+            transition: opacity 0.3s ease-in-out;
+        }
+    </style>
+</head>
+<body class="flex h-screen">
+
+    <aside class="w-64 bg-gray-800 text-white flex flex-col">
+        <div class="h-16 flex items-center justify-center text-2xl font-bold border-b border-gray-700">
+            <i class="fas fa-file-invoice-dollar mr-3"></i>Cotizador
+        </div>
+        <nav class="flex-1 px-4 py-6 space-y-2">
+            <a href="#dashboard" class="sidebar-link flex items-center px-4 py-2 rounded-lg">
+                <i class="fas fa-tachometer-alt w-6"></i><span>Dashboard</span>
+            </a>
+            <a href="#quotes" class="sidebar-link flex items-center px-4 py-2 rounded-lg">
+                <i class="fas fa-file-alt w-6"></i><span>Cotizaciones</span>
+            </a>
+            <a href="#clients" class="sidebar-link flex items-center px-4 py-2 rounded-lg">
+                <i class="fas fa-users w-6"></i><span>Clientes</span>
+            </a>
+            <a href="#services" class="sidebar-link flex items-center px-4 py-2 rounded-lg">
+                <i class="fas fa-cogs w-6"></i><span>Servicios</span>
+            </a>
+        </nav>
+        <div class="p-4 border-t border-gray-700">
+            <p class="text-xs text-gray-400">&copy; 2025 Plataforma de Cotizaciones</p>
+        </div>
+    </aside>
+
+    <main class="flex-1 p-6 md:p-10 overflow-y-auto">
+
+        <div id="dashboard" class="view active">
+            <h1 class="text-3xl font-bold text-gray-800 mb-6">Dashboard</h1>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div class="bg-white p-6 rounded-lg shadow-md flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-500">Cotizaciones Totales</p>
+                        <p id="total-quotes" class="text-3xl font-bold">0</p>
+                    </div>
+                    <i class="fas fa-file-alt text-4xl text-blue-500"></i>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow-md flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-500">Total Clientes</p>
+                        <p id="total-clients" class="text-3xl font-bold">0</p>
+                    </div>
+                    <i class="fas fa-users text-4xl text-green-500"></i>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow-md flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-500">Total Servicios</p>
+                        <p id="total-services" class="text-3xl font-bold">0</p>
+                    </div>
+                    <i class="fas fa-cogs text-4xl text-yellow-500"></i>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow-md flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-500">Ingresos (Aceptado)</p>
+                        <p id="total-revenue" class="text-3xl font-bold">$0.00</p>
+                    </div>
+                    <i class="fas fa-dollar-sign text-4xl text-red-500"></i>
+                </div>
+            </div>
+            <div class="mt-10 bg-white p-6 rounded-lg shadow-md">
+                <h2 class="text-xl font-bold text-gray-700 mb-4">Cotizaciones Recientes</h2>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left">
+                        <thead>
+                            <tr class="border-b">
+                                <th class="py-2"># Cotización</th>
+                                <th>Cliente</th>
+                                <th>Monto</th>
+                                <th>Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recent-quotes-table">
+                            </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div id="quotes" class="view">
+            <div class="flex justify-between items-center mb-6">
+                <h1 class="text-3xl font-bold text-gray-800">Cotizaciones</h1>
+                <button id="new-quote-btn" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 btn flex items-center">
+                    <i class="fas fa-plus mr-2"></i>Nueva Cotización
+                </button>
+            </div>
+            <div class="bg-white p-6 rounded-lg shadow-md">
+                 <div class="overflow-x-auto">
+                    <table class="w-full text-left">
+                        <thead>
+                            <tr class="border-b">
+                                <th class="py-2 px-4">#</th>
+                                <th class="py-2 px-4">Cliente</th>
+                                <th class="py-2 px-4">Fecha</th>
+                                <th class="py-2 px-4">Monto</th>
+                                <th class="py-2 px-4">Estado</th>
+                                <th class="py-2 px-4">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="quotes-table">
+                            </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div id="clients" class="view">
+            <div class="flex justify-between items-center mb-6">
+                <h1 class="text-3xl font-bold text-gray-800">Clientes</h1>
+                <button id="new-client-btn" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 btn flex items-center">
+                    <i class="fas fa-plus mr-2"></i>Nuevo Cliente
+                </button>
+            </div>
+            <div class="bg-white p-6 rounded-lg shadow-md">
+                 <div class="overflow-x-auto">
+                    <table class="w-full text-left">
+                        <thead>
+                            <tr class="border-b">
+                                <th class="py-2 px-4">Nombre</th>
+                                <th class="py-2 px-4">Empresa</th>
+                                <th class="py-2 px-4">Email</th>
+                                <th class="py-2 px-4">Teléfono</th>
+                            </tr>
+                        </thead>
+                        <tbody id="clients-table">
+                            </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div id="services" class="view">
+            <div class="flex justify-between items-center mb-6">
+                <h1 class="text-3xl font-bold text-gray-800">Servicios</h1>
+                <button id="new-service-btn" class="bg-yellow-500 text-white px-4 py-2 rounded-lg hover:bg-yellow-600 btn flex items-center">
+                    <i class="fas fa-plus mr-2"></i>Nuevo Servicio
+                </button>
+            </div>
+            <div class="bg-white p-6 rounded-lg shadow-md">
+                 <div class="overflow-x-auto">
+                    <table class="w-full text-left">
+                        <thead>
+                            <tr class="border-b">
+                                <th class="py-2 px-4">Nombre</th>
+                                <th class="py-2 px-4">Descripción</th>
+                                <th class="py-2 px-4">Precio Base</th>
+                                <th class="py-2 px-4">Unidad</th>
+                            </tr>
+                        </thead>
+                        <tbody id="services-table">
+                            </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <div id="quote-editor" class="view">
+            <h1 class="text-3xl font-bold text-gray-800 mb-6" id="quote-editor-title">Nueva Cotización</h1>
+            <div class="bg-white p-8 rounded-lg shadow-md">
+                <form id="quote-form">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label for="quote-client" class="block text-sm font-medium text-gray-700">Cliente</label>
+                            <select id="quote-client" required class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"></select>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                             <div>
+                                <label for="quote-date" class="block text-sm font-medium text-gray-700">Fecha de Emisión</label>
+                                <input type="date" id="quote-date" required class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                            </div>
+                            <div>
+                                <label for="quote-due-date" class="block text-sm font-medium text-gray-700">Fecha de Vencimiento</label>
+                                <input type="date" id="quote-due-date" required class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <hr class="my-8">
+
+                    <h2 class="text-xl font-bold text-gray-700 mb-4">Servicios</h2>
+                    <div id="quote-items-container">
+                        </div>
+                    <button type="button" id="add-item-btn" class="mt-4 bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 btn flex items-center">
+                        <i class="fas fa-plus mr-2"></i>Añadir Servicio
+                    </button>
+
+                    <hr class="my-8">
+                    
+                    <div class="flex justify-end">
+                        <div class="w-full md:w-1/3">
+                            <div class="flex justify-between py-2">
+                                <span class="font-medium text-gray-600">Subtotal:</span>
+                                <span id="quote-subtotal" class="font-bold text-gray-800">$0.00</span>
+                            </div>
+                             <div class="flex justify-between py-2 items-center">
+                                <span class="font-medium text-gray-600">Impuestos (%):</span>
+                                <input type="number" id="quote-tax" value="16" class="w-20 text-right border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                            </div>
+                            <div class="flex justify-between py-2 border-t mt-2">
+                                <span class="text-xl font-bold text-gray-800">Total:</span>
+                                <span id="quote-total" class="text-xl font-bold text-blue-600">$0.00</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-8 flex justify-end space-x-4">
+                        <button type="button" id="cancel-quote-btn" class="bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600 btn">Cancelar</button>
+                        <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 btn">Guardar Cotización</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+    </main>
+    
+    <div id="client-modal" class="modal-overlay fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center">
+        <div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-md">
+            <h2 class="text-2xl font-bold mb-6">Nuevo Cliente</h2>
+            <form id="client-form">
+                <div class="space-y-4">
+                    <input type="text" id="client-name" placeholder="Nombre Completo" required class="w-full border-gray-300 rounded-md shadow-sm">
+                    <input type="text" id="client-company" placeholder="Empresa (Opcional)" class="w-full border-gray-300 rounded-md shadow-sm">
+                    <input type="email" id="client-email" placeholder="Email" required class="w-full border-gray-300 rounded-md shadow-sm">
+                    <input type="tel" id="client-phone" placeholder="Teléfono" required class="w-full border-gray-300 rounded-md shadow-sm">
+                </div>
+                <div class="mt-8 flex justify-end space-x-4">
+                    <button type="button" class="modal-cancel bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 btn">Cancelar</button>
+                    <button type="submit" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 btn">Guardar Cliente</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="service-modal" class="modal-overlay fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center">
+        <div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-md">
+            <h2 class="text-2xl font-bold mb-6">Nuevo Servicio</h2>
+            <form id="service-form">
+                <div class="space-y-4">
+                    <input type="text" id="service-name" placeholder="Nombre del Servicio" required class="w-full border-gray-300 rounded-md shadow-sm">
+                    <textarea id="service-description" placeholder="Descripción" required rows="3" class="w-full border-gray-300 rounded-md shadow-sm"></textarea>
+                    <input type="number" id="service-price" placeholder="Precio Base" required min="0" step="0.01" class="w-full border-gray-300 rounded-md shadow-sm">
+                    <input type="text" id="service-unit" placeholder="Unidad (ej. por hora, por proyecto)" required class="w-full border-gray-300 rounded-md shadow-sm">
+                </div>
+                <div class="mt-8 flex justify-end space-x-4">
+                    <button type="button" class="modal-cancel bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 btn">Cancelar</button>
+                    <button type="submit" class="bg-yellow-500 text-white px-4 py-2 rounded-lg hover:bg-yellow-600 btn">Guardar Servicio</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // --- SIMULACIÓN DE BACKEND Y BASE DE DATOS ---
+        const db = {
+            clients: [
+                { id: 1, name: 'Juan Pérez', company: 'Tech Solutions S.A.', email: 'juan.perez@techsolutions.com', phone: '5512345678' },
+                { id: 2, name: 'Ana García', company: 'Diseño Creativo', email: 'ana.garcia@diseno.com', phone: '5587654321' }
+            ],
+            services: [
+                { id: 1, name: 'Desarrollo Web Básico', description: 'Creación de sitio web estático de 5 páginas.', price: 15000.00, unit: 'por proyecto' },
+                { id: 2, name: 'Consultoría SEO', description: 'Análisis y estrategia de posicionamiento.', price: 800.00, unit: 'por hora' },
+                { id: 3, name: 'Mantenimiento Mensual', description: 'Soporte y actualizaciones para sitios web.', price: 4500.00, unit: 'por mes' }
+            ],
+            quotes: [
+                { id: 1, clientId: 1, number: 'COT-001', issueDate: '2025-06-15', dueDate: '2025-07-15', status: 'aceptado', subtotal: 15000.00, tax: 16, total: 17400.00, items: [{ serviceId: 1, description: 'Creación de sitio web estático de 5 páginas.', quantity: 1, unitPrice: 15000.00 }] },
+                { id: 2, clientId: 2, number: 'COT-002', issueDate: '2025-06-20', dueDate: '2025-07-20', status: 'enviado', subtotal: 4000.00, tax: 16, total: 4640.00, items: [{ serviceId: 2, description: 'Análisis y estrategia de posicionamiento.', quantity: 5, unitPrice: 800.00 }] }
+            ]
+        };
+
+        // --- NAVEGACIÓN Y VISTAS ---
+        const views = document.querySelectorAll('.view');
+        const sidebarLinks = document.querySelectorAll('.sidebar-link');
+
+        function showView(id) {
+            views.forEach(view => view.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+            sidebarLinks.forEach(link => {
+                link.classList.toggle('active', link.hash === `#${id}`);
+            });
+        }
+
+        sidebarLinks.forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                const id = e.currentTarget.hash.substring(1);
+                if (id === 'quotes') {
+                    renderQuotesTable();
+                }
+                showView(id);
+            });
+        });
+        
+        // --- LÓGICA DE LA APLICACIÓN ---
+
+        // Renderizado inicial
+        function init() {
+            renderDashboard();
+            renderClientsTable();
+            renderServicesTable();
+            renderQuotesTable();
+            setupEventListeners();
+            showView('dashboard');
+        }
+
+        function renderDashboard() {
+            document.getElementById('total-quotes').textContent = db.quotes.length;
+            document.getElementById('total-clients').textContent = db.clients.length;
+            document.getElementById('total-services').textContent = db.services.length;
+            
+            const totalRevenue = db.quotes
+                .filter(q => q.status === 'aceptado')
+                .reduce((sum, q) => sum + q.total, 0);
+            document.getElementById('total-revenue').textContent = formatCurrency(totalRevenue);
+
+            const recentQuotesTable = document.getElementById('recent-quotes-table');
+            recentQuotesTable.innerHTML = '';
+            db.quotes.slice(-5).reverse().forEach(quote => {
+                const client = db.clients.find(c => c.id === quote.clientId);
+                const row = `
+                    <tr class="border-b hover:bg-gray-50">
+                        <td class="py-3 px-4">${quote.number}</td>
+                        <td class="py-3 px-4">${client ? client.name : 'N/A'}</td>
+                        <td class="py-3 px-4">${formatCurrency(quote.total)}</td>
+                        <td class="py-3 px-4">${renderStatusBadge(quote.status)}</td>
+                    </tr>
+                `;
+                recentQuotesTable.innerHTML += row;
+            });
+        }
+
+        function renderClientsTable() {
+            const tableBody = document.getElementById('clients-table');
+            tableBody.innerHTML = '';
+            db.clients.forEach(client => {
+                const row = `
+                    <tr class="border-b hover:bg-gray-50">
+                        <td class="py-3 px-4">${client.name}</td>
+                        <td class="py-3 px-4">${client.company}</td>
+                        <td class="py-3 px-4">${client.email}</td>
+                        <td class="py-3 px-4">${client.phone}</td>
+                    </tr>
+                `;
+                tableBody.innerHTML += row;
+            });
+        }
+
+        function renderServicesTable() {
+            const tableBody = document.getElementById('services-table');
+            tableBody.innerHTML = '';
+            db.services.forEach(service => {
+                const row = `
+                    <tr class="border-b hover:bg-gray-50">
+                        <td class="py-3 px-4">${service.name}</td>
+                        <td class="py-3 px-4">${service.description}</td>
+                        <td class="py-3 px-4">${formatCurrency(service.price)}</td>
+                        <td class="py-3 px-4">${service.unit}</td>
+                    </tr>
+                `;
+                tableBody.innerHTML += row;
+            });
+        }
+        
+        function renderQuotesTable() {
+            const tableBody = document.getElementById('quotes-table');
+            tableBody.innerHTML = '';
+            db.quotes.forEach(quote => {
+                const client = db.clients.find(c => c.id === quote.clientId);
+                const row = `
+                    <tr class="border-b hover:bg-gray-50">
+                        <td class="py-3 px-4">${quote.number}</td>
+                        <td class="py-3 px-4">${client ? client.name : 'N/A'}</td>
+                        <td class="py-3 px-4">${quote.issueDate}</td>
+                        <td class="py-3 px-4">${formatCurrency(quote.total)}</td>
+                        <td class="py-3 px-4">${renderStatusBadge(quote.status)}</td>
+                        <td class="py-3 px-4">
+                            <button class="text-blue-500 hover:text-blue-700 mr-2" onclick="window.app.downloadPDF(${quote.id})"><i class="fas fa-download"></i></button>
+                            <select class="status-changer border-gray-300 rounded-md text-sm" data-id="${quote.id}">
+                                <option value="borrador" ${quote.status === 'borrador' ? 'selected' : ''}>Borrador</option>
+                                <option value="enviado" ${quote.status === 'enviado' ? 'selected' : ''}>Enviado</option>
+                                <option value="aceptado" ${quote.status === 'aceptado' ? 'selected' : ''}>Aceptado</option>
+                                <option value="rechazado" ${quote.status === 'rechazado' ? 'selected' : ''}>Rechazado</option>
+                            </select>
+                        </td>
+                    </tr>
+                `;
+                tableBody.innerHTML += row;
+            });
+        }
+        
+        function setupEventListeners() {
+            // Modals
+            document.getElementById('new-client-btn').addEventListener('click', () => openModal('client-modal'));
+            document.getElementById('new-service-btn').addEventListener('click', () => openModal('service-modal'));
+            document.querySelectorAll('.modal-cancel').forEach(btn => btn.addEventListener('click', () => closeModal(btn.closest('.modal-overlay').id)));
+
+            // Forms
+            document.getElementById('client-form').addEventListener('submit', saveClient);
+            document.getElementById('service-form').addEventListener('submit', saveService);
+            
+            // Quote Editor
+            document.getElementById('new-quote-btn').addEventListener('click', openQuoteEditor);
+            document.getElementById('cancel-quote-btn').addEventListener('click', () => showView('quotes'));
+            document.getElementById('add-item-btn').addEventListener('click', addQuoteItem);
+            document.getElementById('quote-form').addEventListener('submit', saveQuote);
+            document.getElementById('quote-form').addEventListener('input', updateQuoteTotals);
+            
+            // Status changer
+            document.getElementById('quotes-table').addEventListener('change', (e) => {
+                if (e.target.classList.contains('status-changer')) {
+                    const quoteId = parseInt(e.target.dataset.id);
+                    const newStatus = e.target.value;
+                    const quote = db.quotes.find(q => q.id === quoteId);
+                    if (quote) {
+                        quote.status = newStatus;
+                        renderQuotesTable();
+                        renderDashboard();
+                    }
+                }
+            });
+        }
+
+        function openModal(id) {
+            const modal = document.getElementById(id);
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function closeModal(id) {
+            const modal = document.getElementById(id);
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        function saveClient(e) {
+            e.preventDefault();
+            const newClient = {
+                id: db.clients.length > 0 ? Math.max(...db.clients.map(c => c.id)) + 1 : 1,
+                name: document.getElementById('client-name').value,
+                company: document.getElementById('client-company').value,
+                email: document.getElementById('client-email').value,
+                phone: document.getElementById('client-phone').value
+            };
+            db.clients.push(newClient);
+            renderClientsTable();
+            renderDashboard();
+            e.target.reset();
+            closeModal('client-modal');
+        }
+        
+        function saveService(e) {
+            e.preventDefault();
+            const newService = {
+                id: db.services.length > 0 ? Math.max(...db.services.map(s => s.id)) + 1 : 1,
+                name: document.getElementById('service-name').value,
+                description: document.getElementById('service-description').value,
+                price: parseFloat(document.getElementById('service-price').value),
+                unit: document.getElementById('service-unit').value
+            };
+            db.services.push(newService);
+            renderServicesTable();
+            renderDashboard();
+            e.target.reset();
+            closeModal('service-modal');
+        }
+        
+        function openQuoteEditor() {
+            document.getElementById('quote-editor-title').textContent = 'Nueva Cotización';
+            document.getElementById('quote-form').reset();
+            document.getElementById('quote-items-container').innerHTML = '';
+            
+            const clientSelect = document.getElementById('quote-client');
+            clientSelect.innerHTML = '<option value="">Seleccione un cliente</option>';
+            db.clients.forEach(c => {
+                clientSelect.innerHTML += `<option value="${c.id}">${c.name} - ${c.company}</option>`;
+            });
+            
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('quote-date').value = today;
+            const dueDate = new Date();
+            dueDate.setDate(dueDate.getDate() + 30);
+            document.getElementById('quote-due-date').value = dueDate.toISOString().split('T')[0];
+
+            addQuoteItem();
+            updateQuoteTotals();
+            showView('quote-editor');
+        }
+        
+        function addQuoteItem() {
+            const container = document.getElementById('quote-items-container');
+            const itemIndex = container.children.length;
+            const itemHtml = `
+                <div class="quote-item grid grid-cols-12 gap-4 items-center mb-2">
+                    <div class="col-span-4">
+                        <select class="item-service w-full border-gray-300 rounded-md shadow-sm" data-index="${itemIndex}">
+                            <option value="">Seleccione un servicio</option>
+                            ${db.services.map(s => `<option value="${s.id}">${s.name}</option>`).join('')}
+                        </select>
+                    </div>
+                    <div class="col-span-4">
+                        <input type="text" class="item-description w-full border-gray-300 rounded-md shadow-sm" placeholder="Descripción">
+                    </div>
+                    <div class="col-span-1">
+                        <input type="number" class="item-quantity w-full border-gray-300 rounded-md shadow-sm" value="1" min="1">
+                    </div>
+                    <div class="col-span-2">
+                        <input type="number" class="item-price w-full border-gray-300 rounded-md shadow-sm" step="0.01" placeholder="Precio">
+                    </div>
+                    <div class="col-span-1 text-right">
+                        <button type="button" class="remove-item-btn text-red-500 hover:text-red-700"><i class="fas fa-trash"></i></button>
+                    </div>
+                </div>
+            `;
+            container.insertAdjacentHTML('beforeend', itemHtml);
+            
+            const newItem = container.lastElementChild;
+            newItem.querySelector('.item-service').addEventListener('change', (e) => {
+                const serviceId = e.target.value;
+                const service = db.services.find(s => s.id == serviceId);
+                if (service) {
+                    newItem.querySelector('.item-description').value = service.description;
+                    newItem.querySelector('.item-price').value = service.price.toFixed(2);
+                    updateQuoteTotals();
+                }
+            });
+            newItem.querySelector('.remove-item-btn').addEventListener('click', (e) => {
+                e.currentTarget.closest('.quote-item').remove();
+                updateQuoteTotals();
+            });
+        }
+        
+        function updateQuoteTotals() {
+            let subtotal = 0;
+            document.querySelectorAll('.quote-item').forEach(item => {
+                const quantity = parseFloat(item.querySelector('.item-quantity').value) || 0;
+                const price = parseFloat(item.querySelector('.item-price').value) || 0;
+                subtotal += quantity * price;
+            });
+            
+            const taxPercent = parseFloat(document.getElementById('quote-tax').value) || 0;
+            const taxAmount = subtotal * (taxPercent / 100);
+            const total = subtotal + taxAmount;
+            
+            document.getElementById('quote-subtotal').textContent = formatCurrency(subtotal);
+            document.getElementById('quote-total').textContent = formatCurrency(total);
+        }
+        
+        function saveQuote(e) {
+            e.preventDefault();
+            const items = [];
+            document.querySelectorAll('.quote-item').forEach(itemEl => {
+                const serviceId = parseInt(itemEl.querySelector('.item-service').value);
+                if (serviceId) {
+                    items.push({
+                        serviceId: serviceId,
+                        description: itemEl.querySelector('.item-description').value,
+                        quantity: parseFloat(itemEl.querySelector('.item-quantity').value),
+                        unitPrice: parseFloat(itemEl.querySelector('.item-price').value)
+                    });
+                }
+            });
+
+            if (items.length === 0) {
+                alert('Por favor, añade al menos un servicio a la cotización.');
+                return;
+            }
+
+            const subtotal = items.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);
+            const tax = parseFloat(document.getElementById('quote-tax').value);
+            const total = subtotal * (1 + tax / 100);
+            const newId = db.quotes.length > 0 ? Math.max(...db.quotes.map(q => q.id)) + 1 : 1;
+
+            const newQuote = {
+                id: newId,
+                clientId: parseInt(document.getElementById('quote-client').value),
+                number: `COT-${String(newId).padStart(3, '0')}`,
+                issueDate: document.getElementById('quote-date').value,
+                dueDate: document.getElementById('quote-due-date').value,
+                status: 'borrador',
+                subtotal: subtotal,
+                tax: tax,
+                total: total,
+                items: items
+            };
+
+            db.quotes.push(newQuote);
+            renderDashboard();
+            renderQuotesTable();
+            showView('quotes');
+        }
+
+        // --- HELPERS ---
+        function formatCurrency(amount) {
+            return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(amount);
+        }
+
+        function renderStatusBadge(status) {
+            const colors = {
+                borrador: 'bg-gray-200 text-gray-800',
+                enviado: 'bg-blue-200 text-blue-800',
+                aceptado: 'bg-green-200 text-green-800',
+                rechazado: 'bg-red-200 text-red-800'
+            };
+            const statusText = status.charAt(0).toUpperCase() + status.slice(1);
+            return `<span class="px-2 py-1 text-xs font-semibold rounded-full ${colors[status] || colors.borrador}">${statusText}</span>`;
+        }
+
+        // --- GLOBAL APP OBJECT ---
+        window.app = {};
+
+        // --- PDF GENERATION ---
+        window.app.downloadPDF = function(quoteId) {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+
+            const quote = db.quotes.find(q => q.id === quoteId);
+            if (!quote) {
+                console.error('Quote not found!');
+                alert('No se pudo encontrar la cotización.');
+                return;
+            }
+            const client = db.clients.find(c => c.id === quote.clientId);
+
+            // 1. Header
+            doc.setFontSize(20);
+            doc.setFont('helvetica', 'bold');
+            doc.text('COTIZACIÓN', 105, 20, { align: 'center' });
+
+            doc.setFontSize(10);
+            doc.setFont('helvetica', 'normal');
+            doc.text('Tu Empresa Cotizadora', 15, 30);
+            doc.text('Tu Dirección, Ciudad, C.P.', 15, 35);
+            doc.text('tu_email@empresa.com', 15, 40);
+
+            doc.setFontSize(12);
+            doc.setFont('helvetica', 'bold');
+            doc.text(`COTIZACIÓN #: ${quote.number}`, 200, 30, { align: 'right' });
+            doc.setFont('helvetica', 'normal');
+            doc.text(`Fecha: ${quote.issueDate}`, 200, 35, { align: 'right' });
+            doc.text(`Vencimiento: ${quote.dueDate}`, 200, 40, { align: 'right' });
+
+            // 2. Client Information
+            doc.setDrawColor(200);
+            doc.line(15, 50, 200, 50);
+            
+            doc.setFont('helvetica', 'bold');
+            doc.text('Cliente:', 15, 60);
+            doc.setFont('helvetica', 'normal');
+            if (client) {
+                doc.text(client.name, 15, 65);
+                doc.text(client.company || '', 15, 70);
+                doc.text(client.email, 15, 75);
+            } else {
+                doc.text('Cliente no encontrado', 15, 65);
+            }
+
+            // 3. Items Table
+            const tableHead = [['Descripción', 'Cantidad', 'Precio Unitario', 'Total']];
+            const tableBody = quote.items.map(item => [
+                item.description,
+                item.quantity,
+                formatCurrency(item.unitPrice),
+                formatCurrency(item.quantity * item.unitPrice)
+            ]);
+
+            doc.autoTable({
+                head: tableHead,
+                body: tableBody,
+                startY: 85,
+                headStyles: { fillColor: [55, 65, 81] }, // gray-800
+                styles: { fontSize: 10 },
+            });
+
+            // 4. Totals
+            const finalY = doc.lastAutoTable.finalY;
+            const totalsX = 140;
+            const valuesX = 200;
+
+            doc.setFontSize(11);
+            doc.setFont('helvetica', 'normal');
+            
+            doc.text('Subtotal:', totalsX, finalY + 10, { align: 'right' });
+            doc.text(formatCurrency(quote.subtotal), valuesX, finalY + 10, { align: 'right' });
+            
+            doc.text(`Impuestos (${quote.tax}%):`, totalsX, finalY + 17, { align: 'right' });
+            doc.text(formatCurrency(quote.subtotal * (quote.tax / 100)), valuesX, finalY + 17, { align: 'right' });
+
+            doc.setFont('helvetica', 'bold');
+            doc.text('Total:', totalsX, finalY + 24, { align: 'right' });
+            doc.text(formatCurrency(quote.total), valuesX, finalY + 24, { align: 'right' });
+            
+            // 5. Footer
+            doc.setFontSize(9);
+            doc.setTextColor(150);
+            doc.text('Gracias por su preferencia. Precios sujetos a cambio sin previo aviso.', 105, doc.internal.pageSize.height - 10, { align: 'center' });
+
+            // 6. Save PDF
+            doc.save(`Cotizacion-${quote.number}.pdf`);
+        };
+
+        // --- INICIALIZACIÓN ---
+        init();
+    });
+    </script>
+</body>
+</html>
